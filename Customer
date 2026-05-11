@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VoiceKart Customer</title>
+
+  <style>
+
+    body{
+      margin:0;
+      padding:0;
+      background:#08111a;
+      font-family:Arial,sans-serif;
+      color:white;
+    }
+
+    .header{
+      background:#102030;
+      padding:18px;
+      text-align:center;
+      font-size:28px;
+      font-weight:bold;
+    }
+
+    .container{
+      padding:20px;
+    }
+
+    .card{
+      background:#102030;
+      border-radius:14px;
+      padding:18px;
+      margin-top:18px;
+    }
+
+    button{
+      width:100%;
+      padding:16px;
+      border:none;
+      border-radius:12px;
+      background:#ff9800;
+      color:black;
+      font-size:18px;
+      font-weight:bold;
+      margin-top:10px;
+    }
+
+    #status{
+      margin-top:12px;
+      text-align:center;
+      font-size:16px;
+    }
+
+    #transcript{
+      margin-top:12px;
+      background:#0d1b2a;
+      padding:14px;
+      border-radius:10px;
+      min-height:50px;
+    }
+
+    .item{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background:#0d1b2a;
+      margin-top:10px;
+      padding:12px;
+      border-radius:10px;
+    }
+
+    .deleteBtn{
+      background:red;
+      color:white;
+      width:auto;
+      padding:8px 12px;
+      font-size:14px;
+    }
+
+    select{
+      width:100%;
+      padding:14px;
+      border-radius:10px;
+      border:none;
+      margin-top:10px;
+      font-size:16px;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div class="header">
+  🛒 VoiceKart Customer
+</div>
+
+<div class="container">
+
+  <div class="card">
+
+    <h2>Voice Assistant</h2>
+
+    <select id="language">
+
+      <option value="en-IN">English</option>
+      <option value="hi-IN">Hindi</option>
+      <option value="bn-IN">Bengali</option>
+      <option value="mr-IN">Marathi</option>
+      <option value="ta-IN">Tamil</option>
+
+    </select>
+
+    <button onclick="startWakeListening()">
+      🎙 Start Voice Assistant
+    </button>
+
+    <div id="status">
+      Waiting for wake word...
+    </div>
+
+    <div id="transcript"></div>
+
+  </div>
+
+  <div class="card">
+
+    <h2>🧺 Grocery Cart</h2>
+
+    <div id="cart"></div>
+
+    <button onclick="uploadCart()">
+      📤 Upload The Cart
+    </button>
+
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+
+const firebaseConfig = {
+
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_AUTH_DOMAIN",
+  databaseURL: "PASTE_DATABASE_URL",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_BUCKET",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+let cart = [];
+
+const groceryDB = [
+
+  {
+    name:'Aata',
+    aliases:['atta','aata','आटा','flour'],
+    icon:'🌾'
+  },
+
+  {
+    name:'Rice',
+    aliases:['rice','chawal','चावल'],
+    icon:'🍚'
+  },
+
+  {
+    name:'Milk',
+    aliases:['milk','doodh','दूध'],
+    icon:'🥛'
+  },
+
+  {
+    name:'Potato',
+    aliases:['potato','aloo','आलू'],
+    icon:'🥔'
+  },
+
+  {
+    name:'Onion',
+    aliases:['onion','pyaz','प्याज'],
+    icon:'🧅'
+  },
+
+  {
+    name:'Tomato',
+    aliases:['tomato','tamatar','टमाटर'],
+    icon:'🍅'
+  },
+
+  {
+    name:'Oil',
+    aliases:['oil','tel','तेल'],
+    icon:'🧴'
+  },
+
+  {
+    name:'Salt',
+    aliases:['salt','namak','नमक'],
+    icon:'🧂'
+  },
+
+  {
+    name:'Sugar',
+    aliases:['sugar','cheeni','चीनी'],
+    icon:'🍬'
+  },
+
+  {
+    name:'Soap',
+    aliases:['soap','sabun','साबुन'],
+    icon:'🧼'
+  }
+
+];
+
+function speak(text){
+
+  const speech = new SpeechSynthesisUtterance(text);
+
+  speech.lang = 'en-IN';
+
+  speechSynthesis.speak(speech);
+}
+
+function setStatus(text,color){
+
+  const status = document.getElementById('status');
+
+  status.innerText = text;
+
+  status.style.color = color;
+}
+
+function startWakeListening(){
+
+  const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+  if(!SpeechRecognition){
+
+    alert('Speech Recognition not supported');
+
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang =
+  document.getElementById('language').value;
+
+  recognition.continuous = true;
+
+  recognition.interimResults = false;
+
+  setStatus('🎧 Listening for wake word...','#00ffcc');
+
+  recognition.onresult = function(event){
+
+    const transcript =
+    event.results[event.results.length - 1][0]
+    .transcript.toLowerCase();
+
+    console.log(transcript);
+
+    document.getElementById('transcript')
+    .innerText = transcript;
+
+    checkWakeWord(transcript);
+  };
+
+  recognition.onerror = function(e){
+
+    console.log(e);
+
+    setStatus('❌ Mic Error','#ff4444');
+  };
+
+  recognition.start();
+}
+
+function checkWakeWord(text){
+
+  if(
+    text.includes('hello voicekart') ||
+    text.includes('hey voicekart') ||
+    text.includes('wake up voicekart')
+  ){
+
+    speak('Hello Rohan');
+
+    setStatus('✅ Wake word detected','#00ff66');
+
+    setTimeout(()=>{
+
+      startCommand();
+
+    },1000);
+  }
+}
+
+function startCommand(){
+
+  const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang =
+  document.getElementById('language').value;
+
+  recognition.continuous = false;
+
+  recognition.interimResults = false;
+
+  setStatus('🎤 Speak grocery item...','#00C985');
+
+  recognition.start();
+
+  recognition.onresult = function(event){
+
+    const text =
+    event.results[0][0]
+    .transcript
+    .toLowerCase();
+
+    console.log(text);
+
+    document.getElementById('transcript')
+    .innerText = text;
+
+    if(text.includes('upload the cart')){
+
+      uploadCart();
+
+      return;
+    }
+
+    const parsed = parseCommand(text);
+
+    if(parsed){
+
+      addItem(parsed);
+
+    }else{
+
+      speak('Item not recognised');
+    }
+  };
+
+  recognition.onend = function(){
+
+    setStatus('Waiting for wake word','#999');
+  };
+}
+
+function parseCommand(text){
+
+  let qty = 1;
+
+  const qtyMatch = text.match(/(\\d+)/);
+
+  if(qtyMatch){
+
+    qty = parseInt(qtyMatch[1]);
+  }
+
+  for(let item of groceryDB){
+
+    for(let alias of item.aliases){
+
+      if(text.includes(alias.toLowerCase())){
+
+        return {
+
+          name:item.name,
+          icon:item.icon,
+          qty:qty
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function addItem(item){
+
+  cart.push(item);
+
+  renderCart();
+
+  speak(item.qty + ' ' + item.name + ' added');
+}
+
+function renderCart(){
+
+  const cartDiv =
+  document.getElementById('cart');
+
+  cartDiv.innerHTML = '';
+
+  cart.forEach((item,index)=>{
+
+    cartDiv.innerHTML += `
+
+    <div class="item">
+
+      <span>
+        ${item.icon} ${item.qty} ${item.name}
+      </span>
+
+      <button
+      class="deleteBtn"
+      onclick="deleteItem(${index})">
+
+      ❌
+
+      </button>
+
+    </div>
+
+    `;
+  });
+}
+
+function deleteItem(index){
+
+  cart.splice(index,1);
+
+  renderCart();
+}
+
+function uploadCart(){
+
+  if(cart.length===0){
+
+    alert('Cart Empty');
+
+    return;
+  }
+
+  const order = {
+
+    customerName:'Rohan',
+
+    customerEmail:'rohan@gmail.com',
+
+    items:cart,
+
+    status:'new',
+
+    createdAt:new Date().toISOString()
+  };
+
+  db.ref('orders').push(order);
+
+  speak('Cart uploaded successfully');
+
+  alert('Order Uploaded');
+
+  cart=[];
+
+  renderCart();
+}
+
+</script>
+
+</body>
+</html>
